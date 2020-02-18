@@ -149,6 +149,7 @@ contract ConsensusCogateway is MasterCopyNonUpgradable, MessageBus, ConsensusGat
 
         messageHash_ = MessageInbox.confirmMessage(
             ERC20GatewayBase.hashDepositIntent(
+                address(most),
                 _amount,
                 _beneficiary
             ),

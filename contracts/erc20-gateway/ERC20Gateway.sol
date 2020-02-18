@@ -15,8 +15,11 @@ pragma solidity >=0.5.0 <0.6.0;
 // limitations under the License.
 
 import "./ERC20GatewayBase.sol";
+import "../ERC20I.sol";
 import "../message-bus/MessageBus.sol";
 import "../proxies/MasterCopyNonUpgradable.sol";
+
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 /**
  * @title ERC20Gateway Contract.
@@ -25,6 +28,11 @@ import "../proxies/MasterCopyNonUpgradable.sol";
  *         chains.
  */
 contract ERC20Gateway is MasterCopyNonUpgradable, MessageBus, ERC20GatewayBase {
+
+    /* Usings */
+
+    using SafeMath for uint256;
+
 
     /* Constants */
 
@@ -77,6 +85,65 @@ contract ERC20Gateway is MasterCopyNonUpgradable, MessageBus, ERC20GatewayBase {
             _outboxStorageIndex,
             _stateRootProvider,
             _maxStorageRootItems
+        );
+    }
+
+    /**
+     * @notice Deposit funds to mint on auxiliary chain. Depositor needs to
+     *         approve this contract with the deposit amount.
+     *
+     * @param _valueToken Address of value token contract
+     * @param _amount Valun token deposit amount in atto.
+     * @param _beneficiary Address of beneficiary on auxiliary chain.
+     * @param _feeGasPrice Fee gas price at which rewards will be calculated.
+     * @param _feeGasLimit Fee gas limit at which rewards will be calculated.
+     *
+     * @return messageHash_ Message hash.
+     */
+
+    function deposit(
+        address _valueToken,
+        uint256 _amount,
+        address _beneficiary,
+        uint256 _feeGasPrice,
+        uint256 _feeGasLimit
+    )
+        external
+        returns(bytes32 messageHash_)
+    {
+        require(
+            _valueToken != address(0),
+            "Value Token address must not be 0"
+        );
+        require(
+            _amount != 0,
+            "Deposit amount should be greater than 0"
+        );
+        require(
+            _beneficiary != address(0),
+            "Beneficiary address must not be 0."
+        );
+        require(
+            _amount > _feeGasPrice.mul(_feeGasLimit),
+            "Deposit amount should be greater than max reward."
+        );
+
+        bytes32 depositIntentHash = hashDepositIntent(_valueToken, _amount, _beneficiary);
+
+        uint256 nonce = nonces[msg.sender];
+        nonces[msg.sender] = nonce.add(1);
+
+        messageHash_ = MessageOutbox.declareMessage(
+            depositIntentHash,
+            nonce,
+            _feeGasPrice,
+            _feeGasLimit,
+            msg.sender
+        );
+
+        require(
+            ERC20I(_valueToken).transferFrom(msg.sender, address(this), _amount),
+            "Value Token transferFrom must succeed."
         );
     }
 

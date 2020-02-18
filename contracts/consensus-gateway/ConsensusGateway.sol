@@ -125,7 +125,7 @@ contract ConsensusGateway is MasterCopyNonUpgradable, MessageBus, ConsensusGatew
             "Deposit amount should be greater than max reward."
         );
 
-        bytes32 depositIntentHash = hashDepositIntent(_amount, _beneficiary);
+        bytes32 depositIntentHash = hashDepositIntent(address(most), _amount, _beneficiary);
 
         uint256 nonce = nonces[msg.sender];
         nonces[msg.sender] = nonce.add(1);
